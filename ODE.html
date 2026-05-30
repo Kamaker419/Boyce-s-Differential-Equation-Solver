@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boyce의 미분방정식 솔루션 계산기</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.8); }
+        .math-container { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-neutral-950 dark:text-neutral-200 transition-colors duration-300 min-h-screen p-6 font-sans">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        <header class="mb-6 border-b border-slate-200 dark:border-neutral-800 pb-4 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Boyce의 미분방정식 솔루션 계산기</h1>
+                <p class="text-sm mt-2 text-slate-500 dark:text-neutral-400">
+                    거지같은 미분방정식의 솔루션과 그래프를 찾아보세요.
+                    <span id="api-status" class="ml-2 font-medium text-green-500">Python 서버 가동 중...</span>
+                </p>
+            </div>
+            <button id="theme-toggle" class="px-4 py-2 rounded-full font-medium text-sm border transition-colors bg-white border-slate-300 text-blue-600 hover:bg-slate-100 dark:bg-neutral-800 dark:border-neutral-700 dark:text-yellow-300 dark:hover:bg-neutral-700">
+                🌙 다크 모드
+            </button>
+        </header>
+
+        <div class="flex items-center justify-between bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 p-4 rounded-xl shadow-sm mb-4">
+            <span class="text-sm font-semibold text-slate-700 dark:text-neutral-300">급수해 (Series Solution) 탐색</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="series-toggle" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-neutral-600 peer-checked:bg-fuchsia-600"></div>
+            </label>
+        </div>
+
+        <div class="flex space-x-2 border-b border-slate-200 dark:border-neutral-800 overflow-x-auto custom-scrollbar">
+            <button id="tab-btn-1" class="tab-btn active px-4 py-3 font-medium whitespace-nowrap transition-colors border-b-2 border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400">
+                1차 미분방정식
+            </button>
+            <button id="tab-btn-2" class="tab-btn px-4 py-3 font-medium whitespace-nowrap transition-colors text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-300 border-b-2 border-transparent">
+                n차 미분방정식
+            </button>
+            <button id="tab-btn-3" class="tab-btn px-4 py-3 font-medium whitespace-nowrap transition-colors text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-300 border-b-2 border-transparent">
+                라플라스 변환
+            </button>
+            <button id="tab-btn-4" class="tab-btn px-4 py-3 font-medium whitespace-nowrap transition-colors text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-300 border-b-2 border-transparent">
+                연립 미분방정식
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+            <div class="lg:col-span-4 p-6 rounded-2xl shadow-xl border bg-white border-slate-200 dark:bg-neutral-900 dark:border-neutral-800 flex flex-col space-y-5">
+                
+                <div id="tab1-content" class="space-y-5 flex-1 flex flex-col">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">방정식 ($y' = f(x, y)$)</label>
+                        <input type="text" id="eq1-input" value="\sin(x) - y" class="w-full px-3 py-2 rounded-lg outline-none font-mono text-sm focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                        <div class="mt-3 p-3 rounded-lg border bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <p class="text-xs mb-1 text-slate-500 dark:text-neutral-400">수식 미리보기:</p>
+                            <div id="eq1-preview" class="math-container text-lg font-serif text-blue-700 dark:text-blue-300"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4 border-t border-slate-200 dark:border-neutral-800">
+                        <label class="block text-sm font-semibold mb-3 text-slate-700 dark:text-neutral-300">수치해석 초기 궤적</label>
+                        <div class="flex gap-3 mb-4">
+                            <div class="flex-1">
+                                <label class="block text-xs mb-1 text-slate-500 dark:text-neutral-400">$x_{init}$</label>
+                                <input type="text" id="xinit-1-input" value="0" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs mb-1 text-slate-500 dark:text-neutral-400">$y_{init}$</label>
+                                <input type="text" id="yinit-1-input" value="1" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            </div>
+                        </div>
+
+                        <label class="block text-sm font-semibold mb-3 text-slate-700 dark:text-neutral-300">급수해 전개 조건</label>
+                        <div class="flex gap-3">
+                            <div class="flex-1">
+                                <label class="block text-xs mb-1 text-slate-500 dark:text-neutral-400">중심점 ($x_0$)</label>
+                                <input type="text" id="x0-1-input" value="0" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="solve-tab1-btn" class="w-full mt-auto bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:from-blue-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50">
+                        그래프 & 해석적 풀이 생성 ✨
+                    </button>
+                </div>
+
+                <div id="tab2-content" class="space-y-4 hidden flex-1 flex flex-col">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">차수 (n)</label>
+                        <select id="order-select" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            <option value="2" selected>2차</option>
+                            <option value="3">3차</option>
+                            <option value="4">4차</option>
+                            <option value="5">5차</option>
+                            <option value="6">6차</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-2 flex flex-col flex-1">
+                        <div class="p-3 rounded-lg border mb-4 bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <p class="text-xs mb-1 text-slate-500 dark:text-neutral-400">방정식 형태 미리보기:</p>
+                            <div id="eq2-preview" class="math-container text-lg font-serif text-blue-700 dark:text-blue-300"></div>
+                        </div>
+                        
+                        <div id="coeffs-container" class="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar flex-1"></div>
+                        
+                        <div class="flex items-center gap-3 mt-3">
+                            <label class="w-12 text-right text-sm font-bold text-slate-700 dark:text-neutral-300">$g(x)$</label>
+                            <input type="text" id="gx-input" value="\sin(x)" class="flex-1 px-3 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-200 dark:border-neutral-800">
+                        <label class="block text-sm font-semibold mb-3 text-slate-700 dark:text-neutral-300">수치해석 초기 궤적</label>
+                        <div class="flex items-center gap-3 mb-3">
+                            <label class="w-10 text-right text-xs text-slate-500 dark:text-neutral-400">$x_{init}$</label>
+                            <input type="text" id="xinit-2-input" value="0" class="flex-1 px-3 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                        </div>
+                        <div id="initconds-container" class="grid grid-cols-2 gap-3 mb-4"></div>
+
+                        <label class="block text-sm font-semibold mb-3 text-slate-700 dark:text-neutral-300">급수해 전개 조건</label>
+                        <div class="flex items-center gap-3">
+                            <label class="w-10 text-right text-xs text-slate-500 dark:text-neutral-400">중심점 ($x_0$)</label>
+                            <input type="text" id="x0-2-input" value="0" class="flex-1 px-3 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                        </div>
+                    </div>
+
+                    <button id="solve-tab2-btn" class="w-full mt-auto bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:from-blue-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50">
+                        그래프 & 해석적 풀이 생성 ✨
+                    </button>
+                </div>
+
+                <div id="tab3-content" class="space-y-4 hidden flex-1 flex flex-col">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">변환 방향</label>
+                        <select id="laplace-dir" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            <option value="forward" selected>라플라스 변환 ($f(t) \to F(s)$ )</option>
+                            <option value="inverse">역라플라스 변환 ($F(s) \to f(t)$ )</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">수식</label>
+                        <input type="text" id="laplace-input" value="\exp(-2*t) * \sin(3*t)" class="w-full px-3 py-2 rounded-lg outline-none font-mono text-sm focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                        
+                        <div class="mt-3 p-3 rounded-lg border bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <p class="text-xs mb-1 text-slate-500 dark:text-neutral-400">수식 미리보기:</p>
+                            <div id="laplace-preview" class="math-container text-lg font-serif text-blue-700 dark:text-blue-300"></div>
+                        </div>
+                    </div>
+                    <button id="solve-tab3-btn" class="w-full mt-auto bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:from-blue-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50">
+                        우아하게 변환하기 ✨
+                    </button>
+                </div>
+
+                <div id="tab4-content" class="space-y-4 hidden flex-1 flex flex-col">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">방정식 개수</label>
+                        <select id="sys-count" class="w-full px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                            <option value="2" selected>2개 (y1, y2)</option>
+                            <option value="3">3개 (y1 ~ y3)</option>
+                            <option value="4">4개 (y1 ~ y4)</option>
+                            <option value="5">5개 (y1 ~ y5)</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 flex flex-col">
+                        <label class="block text-sm font-semibold mb-2 text-slate-700 dark:text-neutral-300">방정식 ($y_i' = \dots$)</label>
+                        <div id="sys-eqs-container" class="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar"></div>
+                    </div>
+                    <div class="pt-4 border-t border-slate-200 dark:border-neutral-800">
+                        <label class="block text-sm font-semibold mb-3 text-slate-700 dark:text-neutral-300">초기 궤적 ($t=0$ 기준)</label>
+                        <div id="sys-init-container" class="grid grid-cols-2 gap-3 mb-2"></div>
+                    </div>
+                    <button id="solve-tab4-btn" class="w-full mt-auto bg-gradient-to-r from-blue-600 to-fuchsia-600 hover:from-blue-500 hover:to-fuchsia-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50">
+                        연립방정식 풀기 ✨
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-8 space-y-6">
+                <div id="plot-container" class="p-2 rounded-2xl shadow-xl border flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden bg-white border-slate-200 dark:bg-neutral-900 dark:border-neutral-800">
+                    <div id="error-msg" class="hidden absolute top-4 left-4 right-4 bg-red-100 text-red-800 dark:bg-red-900/80 dark:text-red-100 px-4 py-3 rounded-lg text-sm font-medium border border-red-200 dark:border-red-700 z-10 shadow-sm backdrop-blur-md"></div>
+                    <div id="plot-div" class="w-full h-full min-h-[400px] rounded-xl overflow-hidden"></div>
+                </div>
+
+                <div id="analytic-results" class="hidden p-6 rounded-2xl shadow-xl border bg-white border-slate-200 dark:bg-neutral-900 dark:border-neutral-800">
+                    <div id="analytic-error" class="hidden p-4 bg-red-100 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200 rounded-lg text-sm mb-4"></div>
+                    
+                    <div id="analytic-content" class="grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
+                        <div class="p-5 rounded-xl border bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <h3 class="text-xs font-bold uppercase tracking-wider mb-3 text-fuchsia-600 dark:text-fuchsia-500">1. 정확한 일반해 (Exact Solution)</h3>
+                            <div id="res-exact" class="math-container text-xl text-blue-700 dark:text-blue-300"></div>
+                        </div>
+
+                        <div class="p-5 rounded-xl border bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <h3 id="series-title" class="text-xs font-bold uppercase tracking-wider mb-3 text-fuchsia-600 dark:text-fuchsia-500">2. 주변의 급수해</h3>
+                            <div id="res-series" class="math-container text-xl text-blue-700 dark:text-blue-300"></div>
+                        </div>
+
+                        <div class="md:col-span-2 p-5 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-500">3. 수렴반경 (Radius of Convergence)</h3>
+                            <div id="res-radius" class="px-6 py-2 rounded-lg border font-serif text-2xl shadow-inner bg-white border-slate-200 text-fuchsia-600 dark:bg-neutral-900 dark:border-neutral-700 dark:text-fuchsia-300">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="analytic-content-simple" class="grid grid-cols-1 gap-6 hidden">
+                        <div class="p-5 rounded-xl border bg-slate-100/50 border-slate-200 dark:bg-neutral-800/50 dark:border-neutral-700/50">
+                            <h3 id="simple-title" class="text-xs font-bold uppercase tracking-wider mb-3 text-fuchsia-600 dark:text-fuchsia-500">결과</h3>
+                            <div id="res-simple" class="math-container text-xl text-blue-700 dark:text-blue-300"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            isDarkMode: true,
+            activeTab: 1,
+            order: 2,
+            coeffs: ["0", "0", "1", "0", "0", "0", "0"],
+            initConds: ["0", "1", "0", "0", "0", "0"]
+        };
+
+        const parseLatexToMathjs = (latexStr) => {
+            if (!latexStr) return "0";
+            return latexStr
+                .replace(/\\sin/g, 'sin').replace(/\\cos/g, 'cos').replace(/\\tan/g, 'tan')
+                .replace(/\\exp/g, 'exp').replace(/\\ln/g, 'log').replace(/\\log/g, 'log')
+                .replace(/\\sqrt{([^}]+)}/g, 'sqrt($1)').replace(/\\left\(/g, '(').replace(/\\right\)/g, ')')
+                .replace(/\\cdot/g, '*').replace(/\\pi/g, 'pi').replace(/\\e/g, 'e')
+                .replace(/\^\{([^}]+)\}/g, '^($1)').replace(/\\frac{([^{}]+)}{([^{}]+)}/g, '(($1)/($2))')
+                .replace(/\\/g, '');
+        };
+
+        const showError = (msg) => {
+            const errDiv = document.getElementById('error-msg');
+            if(msg) {
+                errDiv.innerText = msg;
+                errDiv.classList.remove('hidden');
+            } else {
+                errDiv.classList.add('hidden');
+            }
+        };
+
+        const renderKaTeX = (mathStr, elementId) => {
+            const el = document.getElementById(elementId);
+            if (!el || !window.katex) return;
+            try { katex.render(mathStr, el, { throwOnError: false, displayMode: true }); } 
+            catch (e) { el.innerText = mathStr; }
+        };
+
+        const rk4_1D = (f, x_init, y_init, xEnd, h) => {
+            let x = x_init; let y = y_init;
+            const resX = [x], resY = [y];
+            const steps = Math.abs(Math.floor((xEnd - x_init) / h));
+            const stepH = xEnd > x_init ? Math.abs(h) : -Math.abs(h);
+            for (let i = 0; i < steps; i++) {
+                try {
+                    let k1 = f(x, y);
+                    let k2 = f(x + 0.5 * stepH, y + 0.5 * stepH * k1);
+                    let k3 = f(x + 0.5 * stepH, y + 0.5 * stepH * k2);
+                    let k4 = f(x + stepH, y + stepH * k3);
+                    y = y + (stepH / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+                    x = x + stepH;
+                    if (!isFinite(y) || Math.abs(y) > 1e6) break;
+                    resX.push(x); resY.push(y);
+                } catch (e) { break; }
+            }
+            return { resX, resY };
+        };
+
+        const rk4_system = (f_sys, x_init, Y0, xEnd, h) => {
+            let x = x_init; let Y = [...Y0];
+            const resX = [x], resY = [Y[0]];
+            const steps = Math.abs(Math.floor((xEnd - x_init) / h));
+            const stepH = xEnd > x_init ? Math.abs(h) : -Math.abs(h);
+            for (let i = 0; i < steps; i++) {
+                try {
+                    let k1 = f_sys(x, Y);
+                    let Y_k1 = Y.map((v, j) => v + 0.5 * stepH * k1[j]);
+                    let k2 = f_sys(x + 0.5 * stepH, Y_k1);
+                    let Y_k2 = Y.map((v, j) => v + 0.5 * stepH * k2[j]);
+                    let k3 = f_sys(x + 0.5 * stepH, Y_k2);
+                    let Y_k3 = Y.map((v, j) => v + stepH * k3[j]);
+                    let k4 = f_sys(x + stepH, Y_k3);
+                    Y = Y.map((v, j) => v + (stepH / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
+                    x = x + stepH;
+                    if (!isFinite(Y[0]) || Math.abs(Y[0]) > 1e6) break;
+                    resX.push(x); resY.push(Y[0]);
+                } catch (e) { break; }
+            }
+            return { resX, resY };
+        };
+
+        // 탭 4를 위해 모든 변수값을 저장하는 우아한 룽게-쿠타 함수입니다.
+        const rk4_system_all = (f_sys, x_init, Y0, xEnd, h) => {
+            let x = x_init; let Y = [...Y0];
+            const resX = [x];
+            const resY = Y0.map(v => [v]); 
+            const steps = Math.abs(Math.floor((xEnd - x_init) / h));
+            const stepH = xEnd > x_init ? Math.abs(h) : -Math.abs(h);
+            for (let i = 0; i < steps; i++) {
+                try {
+                    let k1 = f_sys(x, Y);
+                    let Y_k1 = Y.map((v, j) => v + 0.5 * stepH * k1[j]);
+                    let k2 = f_sys(x + 0.5 * stepH, Y_k1);
+                    let Y_k2 = Y.map((v, j) => v + 0.5 * stepH * k2[j]);
+                    let k3 = f_sys(x + 0.5 * stepH, Y_k2);
+                    let Y_k3 = Y.map((v, j) => v + stepH * k3[j]);
+                    let k4 = f_sys(x + stepH, Y_k3);
+                    Y = Y.map((v, j) => v + (stepH / 6) * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]));
+                    x = x + stepH;
+                    if (!isFinite(Y[0]) || Math.abs(Y[0]) > 1e6) break;
+                    resX.push(x); 
+                    for(let j=0; j<Y.length; j++) resY[j].push(Y[j]);
+                } catch (e) { break; }
+            }
+            return { resX, resY };
+        };
+
+        const getPlotTheme = () => {
+            return {
+                titleFontColor: state.isDarkMode ? '#f3f4f6' : '#1f2937',
+                gridColor: state.isDarkMode ? '#374151' : '#e5e7eb',
+                zeroLineColor: state.isDarkMode ? '#4b5563' : '#d1d5db',
+                tickFontColor: state.isDarkMode ? '#9ca3af' : '#6b7280',
+                legendFontColor: state.isDarkMode ? '#d1d5db' : '#374151',
+                arrowColor: state.isDarkMode ? 'rgba(156, 163, 175, 0.5)' : 'rgba(100, 116, 139, 0.5)',
+                lineColor: state.isDarkMode ? '#60a5fa' : '#3b82f6',
+                markerColor: state.isDarkMode ? '#fbbf24' : '#f59e0b'
+            };
+        };
+
+        const drawPlotTab1 = () => {
+            showError("");
+            const eqStr = document.getElementById('eq1-input').value;
+            const xinitStr = document.getElementById('xinit-1-input').value;
+            const yinitStr = document.getElementById('yinit-1-input').value;
+            try {
+                let compiledExpr;
+                try {
+                    compiledExpr = window.math.compile(parseLatexToMathjs(eqStr));
+                } catch (e) {
+                    throw new Error(`어머나, 수식이 조금 이상한 것 같네요. (${eqStr})`);
+                }
+                const f = (x, y) => compiledExpr.evaluate({ x, y });
+                
+                f(0, 0); 
+                
+                const theme = getPlotTheme();
+                const traces = [];
+                const annotations = [];
+                
+                let centerX = 0, centerY = 0;
+                if (xinitStr.trim() !== "" && !isNaN(parseFloat(xinitStr))) centerX = parseFloat(xinitStr);
+                if (yinitStr.trim() !== "" && !isNaN(parseFloat(yinitStr))) centerY = parseFloat(yinitStr);
+                
+                const radiusX = 5;
+                const radiusY = 5;
+                
+                for (let x = Math.floor(centerX - radiusX); x <= Math.ceil(centerX + radiusX); x += 1) {
+                    for (let y = Math.floor(centerY - radiusY); y <= Math.ceil(centerY + radiusY); y += 1) {
+                        const slope = f(x, y);
+                        if (!isFinite(slope)) continue;
+                        const norm = Math.sqrt(1 + slope * slope);
+                        const L = 0.5; 
+                        const dx = (1 / norm) * L;
+                        const dy = (slope / norm) * L;
+                        annotations.push({
+                            x: x + dx / 2, y: y + dy / 2, ax: x - dx / 2, ay: y - dy / 2,    
+                            xref: 'x', yref: 'y', axref: 'x', ayref: 'y',
+                            showarrow: true, arrowhead: 2, arrowsize: 0.8,
+                            arrowcolor: theme.arrowColor, opacity: 1
+                        });
+                    }
+                }
+                
+                if (xinitStr.trim() !== "" && yinitStr.trim() !== "") {
+                    const x_init = parseFloat(xinitStr);
+                    const y_init = parseFloat(yinitStr);
+                    if (!isNaN(x_init) && !isNaN(y_init)) {
+                        const h = 0.05;
+                        const forward = rk4_1D(f, x_init, y_init, centerX + 15, h);
+                        const backward = rk4_1D(f, x_init, y_init, centerX - 15, h);
+                        traces.push({
+                            x: backward.resX.reverse().concat(forward.resX.slice(1)),
+                            y: backward.resY.reverse().concat(forward.resY.slice(1)),
+                            mode: 'lines', line: { color: theme.lineColor, width: 3 }, name: '초기 궤적 (수치해)'
+                        });
+                        traces.push({
+                            x: [x_init], y: [y_init], mode: 'markers',
+                            marker: { color: theme.markerColor, size: 10, line: {color: '#fff', width: 2} }, name: '초기 지점'
+                        });
+                    }
+                }
+                
+                const layout = {
+                    title: { text: '방향장과 수치해석 궤적', font: {color: theme.titleFontColor} },
+                    xaxis: { title: 'x', range: [centerX - radiusX, centerX + radiusX], gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    yaxis: { title: 'y', range: [centerY - radiusY, centerY + radiusY], gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    showlegend: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                    annotations: annotations, legend: { font: {color: theme.legendFontColor} }, margin: { t: 40, b: 40, l: 40, r: 40 },
+                    dragmode: 'pan'
+                };
+                
+                Plotly.newPlot('plot-div', traces, layout, {responsive: true, scrollZoom: true});
+            } catch (err) { showError(err.message); }
+        };
+
+        const drawPlotTab2 = () => {
+            showError("");
+            const xinitStr = document.getElementById('xinit-2-input').value;
+            const gxStr = document.getElementById('gx-input').value;
+            let hasWarning = false;
+            const parsedInitConds = [];
+            for (let i = 0; i < state.order; i++) {
+                let val = parseFloat(state.initConds[i]);
+                if (isNaN(val)) { val = 0; hasWarning = true; }
+                parsedInitConds.push(val);
+            }
+            try {
+                const startX = parseFloat(xinitStr) || 0;
+                
+                let compiledGx, compiledPn;
+                const compiledCoeffs = [];
+                try {
+                    compiledGx = window.math.compile(parseLatexToMathjs(gxStr));
+                    compiledPn = window.math.compile(parseLatexToMathjs(state.coeffs[state.order]));
+                    for(let i=0; i<state.order; i++) {
+                        compiledCoeffs.push(window.math.compile(parseLatexToMathjs(state.coeffs[i])));
+                    }
+                } catch(e) { throw new Error("수식 파싱 중 오류가 발생했습니다."); }
+
+                const f_sys = (x, Y) => {
+                    const dY = new Array(state.order).fill(0);
+                    for (let i = 0; i < state.order - 1; i++) { dY[i] = Y[i + 1]; }
+                    let p_n_val = compiledPn.evaluate({ x });
+                    if (Math.abs(p_n_val) < 1e-12) throw new Error("어라? 최고차항 계수가 0이 되어버렸어요. 이래선 안 되죠.");
+                    let highest = compiledGx.evaluate({ x });
+                    for (let i = 0; i < state.order; i++) highest -= compiledCoeffs[i].evaluate({ x }) * Y[i];
+                    dY[state.order - 1] = highest / p_n_val;
+                    return dY;
+                };
+                
+                f_sys(startX, parsedInitConds);
+                const theme = getPlotTheme();
+                const h = 0.05;
+                const forward = rk4_system(f_sys, startX, parsedInitConds, startX + 15, h);
+                const backward = rk4_system(f_sys, startX, parsedInitConds, startX - 15, h);
+                const traces = [{
+                    x: backward.resX.reverse().concat(forward.resX.slice(1)),
+                    y: backward.resY.reverse().concat(forward.resY.slice(1)),
+                    mode: 'lines', line: { color: theme.lineColor, width: 3 }, name: `수치해석 궤적 y(x)`
+                }, {
+                    x: [startX], y: [parsedInitConds[0]], mode: 'markers',
+                    marker: { color: theme.markerColor, size: 10, line: {color: '#fff', width: 2} }, name: '초기 지점'
+                }];
+                
+                const layout = {
+                    title: { text: `${state.order}차 선형 미분방정식 수치해석 궤적`, font: {color: theme.titleFontColor} },
+                    xaxis: { title: 'x', gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    yaxis: { title: 'y', gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    showlegend: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                    legend: { font: {color: theme.legendFontColor} }, margin: { t: 40, b: 40, l: 40, r: 40 },
+                    dragmode: 'pan'
+                };
+                
+                Plotly.newPlot('plot-div', traces, layout, {responsive: true, scrollZoom: true});
+            } catch (err) { if(!hasWarning) showError(err.message); }
+        };
+
+        const drawPlotTab4 = () => {
+            showError("");
+            const count = parseInt(document.getElementById('sys-count').value);
+            const compiled = [];
+            const initVals = [];
+            
+            try {
+                for(let i=1; i<=count; i++) {
+                    const eqStr = document.getElementById(`sys-eq-${i}`).value;
+                    compiled.push(window.math.compile(parseLatexToMathjs(eqStr)));
+                    const initVal = parseFloat(document.getElementById(`sys-init-${i}`).value);
+                    initVals.push(isNaN(initVal) ? 0 : initVal);
+                }
+
+                const f_sys = (t, Y) => {
+                    const scope = { t: t };
+                    for(let i=0; i<count; i++) scope[`y${i+1}`] = Y[i];
+                    return compiled.map(c => c.evaluate(scope));
+                };
+                
+                // 수식 오류 사전 테스트
+                f_sys(0, initVals);
+
+                const theme = getPlotTheme();
+                const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+                const h = 0.05;
+                const forward = rk4_system_all(f_sys, 0, initVals, 15, h);
+                
+                const traces = [];
+                for(let i=0; i<count; i++) {
+                    traces.push({
+                        x: forward.resX,
+                        y: forward.resY[i],
+                        mode: 'lines',
+                        line: { color: colors[i], width: 2 },
+                        name: `y${i+1}(t)`
+                    });
+                }
+
+                const layout = {
+                    title: { text: `연립 미분방정식 수치해석 궤적 (t > 0)`, font: {color: theme.titleFontColor} },
+                    xaxis: { title: 't (time)', gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    yaxis: { title: 'y', gridcolor: theme.gridColor, zerolinecolor: theme.zeroLineColor, tickfont: {color: theme.tickFontColor} },
+                    showlegend: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                    legend: { font: {color: theme.legendFontColor} }, margin: { t: 40, b: 40, l: 40, r: 40 },
+                    dragmode: 'pan'
+                };
+                
+                Plotly.newPlot('plot-div', traces, layout, {responsive: true, scrollZoom: true});
+
+            } catch (err) {
+                showError("수치해석 중 오류가 발생했습니다. 수식이 올바른지 다시 확인해 보세요. " + err.message);
+            }
+        };
+
+        const reDrawPlot = () => { 
+            if(state.activeTab === 1) drawPlotTab1(); 
+            else if(state.activeTab === 2) drawPlotTab2(); 
+            else if(state.activeTab === 4) drawPlotTab4();
+        };
+
+        const solveByPythonServer = async (eqStr, x0Str, calcSeries) => {
+            try {
+                const response = await fetch('/solve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ equation_str: eqStr, x0_str: x0Str || "0", calc_series: calcSeries })
+                });
+                if (!response.ok) throw new Error("서버가 응답하지 않네요. 서버와 연결이 끊겼나요?");
+                return await response.json();
+            } catch (err) {
+                return { error: `통신 오류: ${err.message}` };
+            }
+        };
+
+        const displayAnalyticResults = (res, x0, calcSeries) => {
+            const container = document.getElementById('analytic-results');
+            const errDiv = document.getElementById('analytic-error');
+            
+            container.classList.remove('hidden');
+            document.getElementById('analytic-content-simple').classList.add('hidden');
+            const contentDiv = document.getElementById('analytic-content');
+            
+            if(res.error) {
+                errDiv.innerText = res.error;
+                errDiv.classList.remove('hidden');
+                contentDiv.classList.add('hidden');
+                return;
+            }
+            errDiv.classList.add('hidden');
+            contentDiv.classList.remove('hidden');
+            
+            document.getElementById('series-title').innerText = calcSeries ? `2. $x_0 = ${x0}$ 주변의 급수해` : '2. 급수해 (탐색 오프)';
+            
+            renderKaTeX(res.exact, 'res-exact');
+            renderKaTeX(res.series, 'res-series');
+            
+            const radiusEl = document.getElementById('res-radius');
+            if (res.radius === "\\infty") {
+                radiusEl.innerHTML = "∞";
+            } else if (res.radius.includes("N/A") || res.radius.includes("오프") || res.radius.includes("생략") || res.radius.includes("불가")) {
+                radiusEl.innerHTML = `<span class="text-sm font-sans text-slate-500 dark:text-neutral-400">${res.radius.replace(/\\text\{|\}/g, '')}</span>`;
+            } else {
+                renderKaTeX(`R = ${res.radius}`, 'res-radius');
+            }
+        };
+
+        const displaySimpleResult = (res, titleText) => {
+            const container = document.getElementById('analytic-results');
+            const errDiv = document.getElementById('analytic-error');
+            
+            container.classList.remove('hidden');
+            document.getElementById('analytic-content').classList.add('hidden');
+            const simpleDiv = document.getElementById('analytic-content-simple');
+            
+            if(res.error) {
+                errDiv.innerText = res.error;
+                errDiv.classList.remove('hidden');
+                simpleDiv.classList.add('hidden');
+                return;
+            }
+            errDiv.classList.add('hidden');
+            simpleDiv.classList.remove('hidden');
+            
+            document.getElementById('simple-title').innerText = titleText;
+            renderKaTeX(res.result, 'res-simple');
+        };
+
+        const updateTheme = () => {
+            const btn = document.getElementById('theme-toggle');
+            if (state.isDarkMode) {
+                document.documentElement.classList.add('dark');
+                btn.innerText = '🌙 다크 모드';
+            } else {
+                document.documentElement.classList.remove('dark');
+                btn.innerText = '☀️ 일반 모드';
+            }
+            if(window.Plotly && state.activeTab !== 3) reDrawPlot();
+            renderTab1Preview();
+            renderTab2Preview();
+        };
+
+        const switchTab = (tabNum) => {
+            state.activeTab = tabNum;
+            for(let i=1; i<=4; i++) {
+                const btn = document.getElementById(`tab-btn-${i}`);
+                const content = document.getElementById(`tab${i}-content`);
+                if(i === tabNum) {
+                    btn.className = "tab-btn active px-4 py-3 font-medium whitespace-nowrap transition-colors border-b-2 border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-400";
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = "tab-btn px-4 py-3 font-medium whitespace-nowrap transition-colors text-slate-500 hover:text-slate-700 dark:text-neutral-400 dark:hover:text-neutral-300 border-b-2 border-transparent";
+                    content.classList.add('hidden');
+                }
+            }
+            document.getElementById('analytic-results').classList.add('hidden');
+            
+            const plotContainer = document.getElementById('plot-container');
+            if(tabNum === 3) {
+                plotContainer.classList.add('hidden');
+            } else {
+                plotContainer.classList.remove('hidden');
+                if(window.Plotly) reDrawPlot();
+            }
+        };
+
+        const renderTab1Preview = () => {
+            const eqStr = document.getElementById('eq1-input').value || '0';
+            renderKaTeX(`y' = ${eqStr}`, 'eq1-preview');
+        };
+
+        const getTab2LatexStr = () => {
+            let terms = [];
+            const gx = document.getElementById('gx-input').value || "0";
+            for (let i = state.order; i >= 0; i--) {
+                let coeff = state.coeffs[i] || "0";
+                if (coeff !== "0") {
+                    if (coeff === "1" && i !== 0) coeff = ""; 
+                    if (coeff === "-1" && i !== 0) coeff = "-";
+                    const yPart = i === 0 ? "y" : (i === 1 ? "y'" : `y^{(${i})}`);
+                    terms.push(`${coeff}${yPart}`);
+                }
+            }
+            let combined = terms.join(" + ").replace(/\+ -/g, "- ");
+            if(combined === "") combined = "0";
+            return `${combined} = ${gx}`;
+        };
+
+        const renderTab2Preview = () => { renderKaTeX(getTab2LatexStr(), 'eq2-preview'); };
+
+        const generateTab2Inputs = () => {
+            const coeffsContainer = document.getElementById('coeffs-container');
+            const initCondsContainer = document.getElementById('initconds-container');
+            let coeffsHTML = '';
+            for(let i=0; i <= state.order; i++) {
+                const deg = state.order - i;
+                const labelColor = deg === state.order ? "font-bold text-blue-500 dark:text-blue-400" : "text-slate-500 dark:text-neutral-400";
+                coeffsHTML += `
+                    <div class="flex items-center gap-3">
+                        <label class="w-12 text-right text-sm font-mono ${labelColor}">$p_{${deg}}$</label>
+                        <input type="text" data-type="coeff" data-index="${deg}" value="${state.coeffs[deg] || '0'}"
+                            class="flex-1 px-3 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                    </div>
+                `;
+            }
+            coeffsContainer.innerHTML = coeffsHTML;
+            let initHTML = '';
+            for(let i=0; i < state.order; i++) {
+                const label = i === 0 ? '$y(x_{init})$' : `$y${"'".repeat(i)}(x_{init})$`;
+                initHTML += `
+                    <div class="flex items-center gap-2">
+                        <label class="w-14 text-right text-xs text-slate-500 dark:text-neutral-400">${label}</label>
+                        <input type="text" data-type="init" data-index="${i}" value="${state.initConds[i] || '0'}"
+                            class="w-full px-2 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                    </div>
+                `;
+            }
+            initCondsContainer.innerHTML = initHTML;
+            document.querySelectorAll('input[data-type="coeff"]').forEach(el => {
+                el.addEventListener('input', (e) => {
+                    state.coeffs[e.target.dataset.index] = e.target.value;
+                    renderTab2Preview();
+                });
+            });
+            document.querySelectorAll('input[data-type="init"]').forEach(el => {
+                el.addEventListener('input', (e) => {
+                    state.initConds[e.target.dataset.index] = e.target.value;
+                });
+            });
+        };
+
+        const generateTab4Inputs = () => {
+            const count = parseInt(document.getElementById('sys-count').value);
+            let eqHTML = '';
+            let initHTML = '';
+            for(let i=1; i<=count; i++) {
+                let defaultEq = "";
+                if(i < count) defaultEq = `y${i+1}`;
+                else defaultEq = `-y1`;
+
+                eqHTML += `
+                    <div class="flex items-center gap-3">
+                        <label class="w-10 font-bold text-sm text-right text-blue-600 dark:text-blue-400">y${i}' =</label>
+                        <input type="text" id="sys-eq-${i}" value="${defaultEq}" class="flex-1 px-3 py-1.5 rounded-md text-sm outline-none font-mono focus:ring-1 focus:ring-blue-500 transition-colors bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                    </div>
+                `;
+                initHTML += `
+                    <div class="flex items-center gap-2">
+                        <label class="w-10 text-right text-xs text-slate-500 dark:text-neutral-400">y${i}(0)</label>
+                        <input type="text" id="sys-init-${i}" value="${i===1 ? '1' : '0'}" class="w-full px-2 py-1.5 rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50 border-slate-300 text-slate-900 dark:bg-neutral-950 dark:border-neutral-700 dark:text-white">
+                    </div>
+                `;
+            }
+            document.getElementById('sys-eqs-container').innerHTML = eqHTML;
+            document.getElementById('sys-init-container').innerHTML = initHTML;
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                state.isDarkMode = !state.isDarkMode;
+                updateTheme();
+            });
+            document.getElementById('tab-btn-1').addEventListener('click', () => switchTab(1));
+            document.getElementById('tab-btn-2').addEventListener('click', () => switchTab(2));
+            document.getElementById('tab-btn-3').addEventListener('click', () => switchTab(3));
+            document.getElementById('tab-btn-4').addEventListener('click', () => switchTab(4));
+            
+            document.getElementById('eq1-input').addEventListener('input', renderTab1Preview);
+            document.getElementById('gx-input').addEventListener('input', renderTab2Preview);
+            
+            document.getElementById('order-select').addEventListener('change', (e) => {
+                state.order = parseInt(e.target.value);
+                if (state.coeffs[state.order] === "0" || !state.coeffs[state.order]) {
+                    state.coeffs[state.order] = "1";
+                }
+                generateTab2Inputs();
+                renderTab2Preview();
+            });
+
+            document.getElementById('sys-count').addEventListener('change', generateTab4Inputs);
+
+            const solveBtn1 = document.getElementById('solve-tab1-btn');
+            solveBtn1.addEventListener('click', async () => {
+                drawPlotTab1();
+                solveBtn1.disabled = true;
+                solveBtn1.innerText = "서버에서 해석 중...";
+                const eq1 = document.getElementById('eq1-input').value;
+                const x0 = document.getElementById('x0-1-input').value || "0";
+                const calcSeries = document.getElementById('series-toggle').checked;
+                
+                const res = await solveByPythonServer(`y' - (${eq1})`, x0, calcSeries);
+                displayAnalyticResults(res, x0, calcSeries);
+                
+                solveBtn1.disabled = false;
+                solveBtn1.innerText = "그래프 & 해석적 풀이 생성 ✨";
+            });
+
+            const solveBtn2 = document.getElementById('solve-tab2-btn');
+            solveBtn2.addEventListener('click', async () => {
+                drawPlotTab2();
+                solveBtn2.disabled = true;
+                solveBtn2.innerText = "서버에서 해석 중...";
+                let terms = [];
+                for(let i=0; i<=state.order; i++) {
+                    let prime = "'".repeat(i);
+                    if (state.coeffs[i] !== "0" && state.coeffs[i] !== "") {
+                        terms.push(`(${state.coeffs[i]})*y${prime}`);
+                    }
+                }
+                const gx = document.getElementById('gx-input').value;
+                const x0 = document.getElementById('x0-2-input').value || "0";
+                const calcSeries = document.getElementById('series-toggle').checked;
+                let eqStr = terms.join(' + ') + ` - (${gx})`;
+                
+                const res = await solveByPythonServer(eqStr, x0, calcSeries);
+                displayAnalyticResults(res, x0, calcSeries);
+                
+                solveBtn2.disabled = false;
+                solveBtn2.innerText = "그래프 & 해석적 풀이 생성 ✨";
+            });
+
+            const renderTab3Preview = () => {
+                const eqStr = document.getElementById('laplace-input').value || '0';
+                const dir = document.getElementById('laplace-dir').value;
+                const prefix = dir === 'forward' ? 'f(t) =' : 'F(s) =';
+                renderKaTeX(`${prefix} ${eqStr}`, 'laplace-preview');
+            };
+
+            const solveBtn3 = document.getElementById('solve-tab3-btn');
+            solveBtn3.addEventListener('click', async () => {
+                solveBtn3.disabled = true;
+                solveBtn3.innerText = "서버에서 변환 중...";
+                
+                const eq = document.getElementById('laplace-input').value;
+                const dir = document.getElementById('laplace-dir').value;
+                
+                try {
+                    const response = await fetch('/laplace', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ equation_str: eq, direction: dir })
+                    });
+                    const res = await response.json();
+                    const titleText = dir === 'forward' ? "라플라스 변환 ($s$ 영역)" : "역라플라스 변환 ($t$ 영역)";
+                    displaySimpleResult(res, titleText);
+                } catch(e) {
+                    displaySimpleResult({error: "통신 오류가 발생했습니다."}, "");
+                }
+                
+                solveBtn3.disabled = false;
+                solveBtn3.innerText = "우아하게 변환하기 ✨";
+            });
+
+            const solveBtn4 = document.getElementById('solve-tab4-btn');
+            solveBtn4.addEventListener('click', async () => {
+                drawPlotTab4();
+                solveBtn4.disabled = true;
+                solveBtn4.innerText = "서버에서 해석 중...";
+                
+                const count = parseInt(document.getElementById('sys-count').value);
+                const eqs = [];
+                for(let i=1; i<=count; i++) {
+                    eqs.push(document.getElementById(`sys-eq-${i}`).value);
+                }
+                
+                try {
+                    const response = await fetch('/solve_system', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ equations: eqs })
+                    });
+                    const res = await response.json();
+                    displaySimpleResult(res, `${count}원 선형 연립방정식 해석해`);
+                } catch(e) {
+                    displaySimpleResult({error: "통신 오류가 발생했습니다."}, "");
+                }
+                
+                solveBtn4.disabled = false;
+                solveBtn4.innerText = "연립방정식 풀기 ✨";
+            });
+            
+            document.getElementById('laplace-input').addEventListener('input', renderTab3Preview);
+            document.getElementById('laplace-dir').addEventListener('change', renderTab3Preview);
+
+            // 로딩 시점에 초기 수식도 예쁘게 그려둡니다.
+            renderTab3Preview();    
+            renderTab1Preview();
+            generateTab2Inputs();
+            renderTab2Preview();
+            generateTab4Inputs();
+            updateTheme();
+
+            window.addEventListener('load', () => { drawPlotTab1(); });
+        });
+    </script>
+</body>
+</html>
