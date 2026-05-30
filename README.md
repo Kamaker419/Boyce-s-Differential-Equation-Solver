@@ -11,9 +11,22 @@
 공부하다가 열 받아서 내가 만들었습니다.
 
 ### 사용 예시: 
-
-
-​<br?
+Example 1. $y'-3y=(2x+1)\sin(3x), \ y(0)=1$의 Solution을 구하는 과정
+<br>
+<img src="./Example/Ex1.png">\
+Example 2. $y^{(4)}-3y''-4y=\sin(2x), \ y^{(3)}(0)=1, y''(0)=1, y'(0)=1. y(0)=1$의 Solution을 구하는 과정
+<br>
+<img src="./Example/Ex2.png">\
+Example 3. Airy Equation의 Series Expantion을 구하는 과정
+<br>
+<img src="./Example/Ex3.png">\
+Example 4. $f(t)=t^{n}$의 Laplace Transform을 구하는 과정
+<br>
+<img src="./Example/Ex4.png">\
+Example 5. Linear Differential Equation System의 Solution을 구하는 과정
+<br>
+<img src="./Example/Ex5.png">\
+<br>
 
 ### 실행 방법: 
 압축을 풀어 ODE_Solver.exe 파일을 실행합니다. (사용법을 따로 .txt로 첨부하였습니다.) <br>
@@ -23,4 +36,5 @@ CMD 콘솔 창이 켜져 있는 상태에서, `http://172.0.0.1:5000`으로 웹 
 <br>
 
 ### 참고:
-Nonlinear 1st-Order Differential Equation에 대해서, General Solution을 억지로 가능한 만큼 explict한 형태로 출력하므로, implict한 형태가 필요하다면 직접 계산할 것.
+$\LaTeX$의 수식과 `sympy`의 수식 표현 기법이 혼용됩니다. <br>
+Nonlinear 1st-Order Differential Equation에 대해서, General Solution을 억지로 가능한 만큼 explict한 형태로 출력하므로, implict한 형태가 필요하다면 직접 계산해야 합니다.
