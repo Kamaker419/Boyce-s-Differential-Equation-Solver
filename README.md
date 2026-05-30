@@ -4,6 +4,8 @@
 1st-Order Differential Equation에 대한 Direction Field, Series Expansion, 그리고 General Solution을 제공합니다. <br>
 2nd-Order Differential Equation에 대한 General Solution, Corresponding Homogeneous Equation에 대한 Series Expansion을 제공합니다. <br>
 3차 ~ 6차의 High-Order Differential Equation에 대한 General Solution을 제공하지만, 계수가 지수함수나 삼각함수일 경우 제공하지 못 할 가능성이 큽니다. (일반적으로, 이는 Constant Coefficient를 갖는 방정식에 대한 기능입니다.) <br>
+주어진 t에 대한 함수의 Laplace Transform을 제공합니다. <br>
+간단한 Linear Differential Equation System의 해를 제공합니다. <br>
 
 **즉, 일반적으로 학부 수준에서 다루는 Boyce's 미분방정식 교재의 1장~7장을 공부할 때 도움이 되는 프로그램입니다.**
 
